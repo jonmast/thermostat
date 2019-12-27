@@ -1,5 +1,6 @@
 use paho_mqtt as mqtt;
 use rppal::gpio::{Gpio, Mode, OutputPin};
+use std::env;
 use std::error::Error;
 use std::str;
 use std::sync::mpsc::Receiver;
@@ -39,7 +40,13 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut client = mqtt::Client::new(MQTT_HOST)?;
     let message_stream = client.start_consuming();
 
-    let (_, _, session_present) = client.connect(None)?;
+    let connect_opts = mqtt::ConnectOptionsBuilder::new()
+        .user_name(env::var("MQTT_USER").expect("MQTT_USER environment variable lookup failed"))
+        .password(
+            env::var("MQTT_PASSWORD").expect("MQTT_PASSWORD environment variable lookup failed"),
+        )
+        .finalize();
+    let (_, _, session_present) = client.connect(connect_opts)?;
     if !session_present {
         println!("Subscribing");
         client.subscribe(SET_TARGET_TOPIC, 1)?;
