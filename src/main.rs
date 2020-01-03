@@ -43,6 +43,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     };
 
     let mut client = mqtt::Client::new(MQTT_HOST)?;
+    client.set_timeout(Duration::from_secs(2));
     let message_stream = client.start_consuming();
 
     let connect_opts = mqtt::ConnectOptionsBuilder::new()
