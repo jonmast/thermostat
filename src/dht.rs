@@ -21,13 +21,13 @@ pub fn read(pin: &mut IoPin) -> Result<Reading, ReadingError> {
 
     pin.set_mode(Mode::Output);
     pin.write(Level::High);
-    sleep(Duration::from_millis(500));
+    sleep(Duration::from_millis(1));
 
     // The next calls are timing critical and care should be taken
     // to ensure no unnecssary work is done below.
 
     pin.write(Level::Low);
-    sleep(Duration::from_millis(20));
+    sleep(Duration::from_micros(1100));
 
     pin.set_mode(Mode::Input);
 
