@@ -20,7 +20,7 @@ const TEMPERATURE_TOPIC: &str = "bedroom/heat/current_temperature/get";
 const SET_TARGET_TOPIC: &str = "bedroom/heat/target_temperature/set";
 const GET_TARGET_TOPIC: &str = "bedroom/heat/target_temperature/get";
 const MODE_TOPIC: &str = "bedroom/heat/mode/state";
-const VARIANCE: f32 = 1.5;
+const VARIANCE: f32 = 1.0;
 
 #[derive(Debug, Default)]
 pub struct Status {
@@ -75,8 +75,8 @@ fn main() -> Result<(), Box<dyn Error>> {
                 toggle_state(&mut relay_pin, &mut status);
 
                 println!(
-                    "Temp: {}, Humidity: {}, Target: {}",
-                    status.temperature, reading.humidity, status.target_temperature
+                    "Temp: {:.2}, Humidity: {:.2}, Target: {}, Running: {}",
+                    status.temperature, reading.humidity, status.target_temperature, status.running
                 )
             }
             Err(e) => eprintln!("Error: {:?}", e),
