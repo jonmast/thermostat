@@ -17,6 +17,7 @@ const DEFAULT_TARGET: f32 = 70.0;
 const SAVE_FILE: &str = "target.txt";
 const MQTT_HOST: &str = "tcp://192.168.1.25:1883";
 const TEMPERATURE_TOPIC: &str = "bedroom/heat/current_temperature/get";
+const HUMIDITY_TOPIC: &str = "bedroom/heat/current_humidity/get";
 const SET_TARGET_TOPIC: &str = "bedroom/heat/target_temperature/set";
 const GET_TARGET_TOPIC: &str = "bedroom/heat/target_temperature/get";
 const MODE_TOPIC: &str = "bedroom/heat/mode/state";
@@ -115,6 +116,7 @@ fn mqtt_sync(
     status: &mut Status,
 ) -> Result<(), Box<dyn Error>> {
     publish_message(client, TEMPERATURE_TOPIC, &status.temperature.to_string())?;
+    publish_message(client, HUMIDITY_TOPIC, &status.humidity.to_string())?;
 
     while let Some(message) = try_receive(client, message_stream) {
         match message.topic() {
