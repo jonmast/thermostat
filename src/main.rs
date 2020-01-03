@@ -2,6 +2,8 @@ use paho_mqtt as mqtt;
 use rppal::gpio::{Gpio, Mode, OutputPin};
 use std::env;
 use std::error::Error;
+use std::fs::File;
+use std::io::prelude::*;
 use std::str;
 use std::sync::mpsc::Receiver;
 use std::thread::sleep;
@@ -11,6 +13,8 @@ mod dht;
 
 const SENSOR_PIN: u8 = 2;
 const RELAY_PIN: u8 = 4;
+const DEFAULT_TARGET: f32 = 70.0;
+const SAVE_FILE: &str = "target.txt";
 const MQTT_HOST: &str = "tcp://192.168.1.25:1883";
 const TEMPERATURE_TOPIC: &str = "bedroom/heat/current_temperature/get";
 const SET_TARGET_TOPIC: &str = "bedroom/heat/target_temperature/set";
@@ -27,15 +31,15 @@ pub struct Status {
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let mut status = Status {
-        target_temperature: 70.0,
-        running: false,
-        ..Default::default()
-    };
-
     let gpio = Gpio::new()?;
     let mut pin = gpio.get(SENSOR_PIN)?.into_io(Mode::Input);
     let mut relay_pin = gpio.get(RELAY_PIN)?.into_output();
+
+    let mut status = Status {
+        target_temperature: initial_target(),
+        running: relay_pin.is_set_high(),
+        ..Default::default()
+    };
 
     let mut client = mqtt::Client::new(MQTT_HOST)?;
     let message_stream = client.start_consuming();
@@ -81,6 +85,26 @@ fn main() -> Result<(), Box<dyn Error>> {
     }
 }
 
+fn initial_target() -> f32 {
+    read_target_from_file().unwrap_or(DEFAULT_TARGET)
+}
+
+fn read_target_from_file() -> Result<f32, Box<dyn Error>> {
+    let mut file = File::open(SAVE_FILE)?;
+    let mut str_target = String::new();
+
+    file.read_to_string(&mut str_target)?;
+
+    let target = str_target.parse()?;
+
+    Ok(target)
+}
+
+fn write_target_to_file(target: f32) -> Result<(), std::io::Error> {
+    let mut file = File::create(SAVE_FILE)?;
+    file.write_all(target.to_string().as_bytes())
+}
+
 fn celcius_to_farenheit(celcius: f32) -> f32 {
     (celcius * 1.8) + 32f32
 }
@@ -97,6 +121,9 @@ fn mqtt_sync(
             SET_TARGET_TOPIC => {
                 if let Ok(Ok(new_target)) = str::from_utf8(message.payload()).map(|t| t.parse()) {
                     status.target_temperature = new_target;
+                    if let Err(e) = write_target_to_file(new_target) {
+                        eprintln!("Failed to persist target, got ({})", e);
+                    }
                 }
             }
             _ => eprintln!("Unrecognized message: {:?}", message),
