@@ -64,6 +64,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             Ok(reading) => {
                 let temperature = celcius_to_farenheit(reading.temperature);
                 status.temperature = temperature;
+                status.humidity = reading.humidity;
 
                 match mqtt_sync(&client, &message_stream, &mut status) {
                     Ok(_) => {}
@@ -78,7 +79,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
                 println!(
                     "Temp: {:.2}, Humidity: {:.2}, Target: {}, Running: {}",
-                    status.temperature, reading.humidity, status.target_temperature, status.running
+                    status.temperature, status.humidity, status.target_temperature, status.running
                 )
             }
             Err(e) => eprintln!("Error: {:?}", e),
@@ -175,8 +176,8 @@ fn publish_message(client: &mqtt::Client, topic: &str, payload: &str) -> mqtt::M
 }
 
 fn try_reconnect(client: &mqtt::Client) {
-    if let Err(_) = client.reconnect() {
-        eprintln!("Failed to reconnect");
+    if let Err(e) = client.reconnect() {
+        eprintln!("Failed to reconnect ({})", e);
     }
 }
 
