@@ -1,15 +1,15 @@
-use paho_mqtt as mqtt;
 use rppal::gpio::{Gpio, Mode, OutputPin};
-use std::env;
 use std::error::Error;
 use std::fs::File;
 use std::io::prelude::*;
 use std::str;
-use std::sync::mpsc::Receiver;
 use std::thread::sleep;
 use std::time::Duration;
 
+mod client;
 mod dht;
+
+use client::Client;
 
 const SENSOR_PIN: u8 = 2;
 const RELAY_PIN: u8 = 4;
@@ -42,21 +42,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         ..Default::default()
     };
 
-    let mut client = mqtt::Client::new(MQTT_HOST)?;
-    client.set_timeout(Duration::from_secs(2));
-    let message_stream = client.start_consuming();
-
-    let connect_opts = mqtt::ConnectOptionsBuilder::new()
-        .user_name(env::var("MQTT_USER").expect("MQTT_USER environment variable lookup failed"))
-        .password(
-            env::var("MQTT_PASSWORD").expect("MQTT_PASSWORD environment variable lookup failed"),
-        )
-        .finalize();
-    let (_, _, session_present) = client.connect(connect_opts)?;
-    if !session_present {
-        println!("Subscribing");
-        client.subscribe(SET_TARGET_TOPIC, 1)?;
-    }
+    let client = Client::new(MQTT_HOST, SET_TARGET_TOPIC)?;
 
     loop {
         let result = dht::read(&mut pin);
@@ -66,12 +52,10 @@ fn main() -> Result<(), Box<dyn Error>> {
                 status.temperature = temperature;
                 status.humidity = reading.humidity;
 
-                match mqtt_sync(&client, &message_stream, &mut status) {
+                match mqtt_sync(&client, &mut status) {
                     Ok(_) => {}
                     Err(e) => {
                         eprintln!("Push Error: {:?}", e);
-
-                        try_reconnect(&client);
                     }
                 }
 
@@ -112,15 +96,11 @@ fn celcius_to_farenheit(celcius: f32) -> f32 {
     (celcius * 1.8) + 32f32
 }
 
-fn mqtt_sync(
-    client: &mqtt::Client,
-    message_stream: &Receiver<Option<mqtt::Message>>,
-    status: &mut Status,
-) -> Result<(), Box<dyn Error>> {
-    publish_message(client, TEMPERATURE_TOPIC, &status.temperature.to_string())?;
-    publish_message(client, HUMIDITY_TOPIC, &status.humidity.to_string())?;
+fn mqtt_sync(client: &Client, status: &mut Status) -> Result<(), Box<dyn Error>> {
+    client.publish_message(TEMPERATURE_TOPIC, &status.temperature.to_string())?;
+    client.publish_message(HUMIDITY_TOPIC, &status.humidity.to_string())?;
 
-    while let Some(message) = try_receive(client, message_stream) {
+    if let Some(message) = client.latest_message() {
         match message.topic() {
             SET_TARGET_TOPIC => {
                 if let Ok(Ok(new_target)) = str::from_utf8(message.payload()).map(|t| t.parse()) {
@@ -134,51 +114,10 @@ fn mqtt_sync(
         }
     }
 
-    publish_message(
-        client,
-        MODE_TOPIC,
-        if status.running { "heat" } else { "off" },
-    )?;
-    publish_message(
-        client,
-        GET_TARGET_TOPIC,
-        &status.target_temperature.to_string(),
-    )?;
+    client.publish_message(MODE_TOPIC, if status.running { "heat" } else { "off" })?;
+    client.publish_message(GET_TARGET_TOPIC, &status.target_temperature.to_string())?;
 
     Ok(())
-}
-
-fn try_receive(
-    client: &mqtt::Client,
-    message_stream: &Receiver<Option<mqtt::Message>>,
-) -> Option<mqtt::Message> {
-    if let Ok(message) = message_stream.try_recv() {
-        match message {
-            Some(message) => Some(message),
-            None => {
-                try_reconnect(client);
-                None
-            }
-        }
-    } else {
-        None
-    }
-}
-
-fn publish_message(client: &mqtt::Client, topic: &str, payload: &str) -> mqtt::MqttResult<()> {
-    let msg = mqtt::MessageBuilder::new()
-        .topic(topic)
-        .payload(payload)
-        .qos(1)
-        .finalize();
-
-    client.publish(msg)
-}
-
-fn try_reconnect(client: &mqtt::Client) {
-    if let Err(e) = client.reconnect() {
-        eprintln!("Failed to reconnect ({})", e);
-    }
 }
 
 fn toggle_state(pin: &mut OutputPin, status: &mut Status) {

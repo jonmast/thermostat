@@ -26,6 +26,11 @@ dependencies = [
 ]
 
 [[package]]
+name = "autocfg"
+version = "0.1.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
 name = "backtrace"
 version = "0.3.40"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -232,22 +237,41 @@ dependencies = [
 ]
 
 [[package]]
-name = "paho-mqtt"
-version = "0.6.0"
+name = "num-derive"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "env_logger 0.6.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "proc-macro2 1.0.7 (registry+https://github.com/rust-lang/crates.io-index)",
+ "quote 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "syn 1.0.13 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "num-traits"
+version = "0.2.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "autocfg 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "paho-mqtt"
+version = "0.7.0"
+source = "git+https://github.com/eclipse/paho.mqtt.rust.git#f92e43a9e252cf0fe552c5420eb41005e454140a"
+dependencies = [
  "futures 0.1.29 (registry+https://github.com/rust-lang/crates.io-index)",
  "futures-timer 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.2.66 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)",
- "paho-mqtt-sys 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "num-derive 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "num-traits 0.2.10 (registry+https://github.com/rust-lang/crates.io-index)",
+ "paho-mqtt-sys 0.2.1 (git+https://github.com/eclipse/paho.mqtt.rust.git)",
 ]
 
 [[package]]
 name = "paho-mqtt-sys"
 version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
+source = "git+https://github.com/eclipse/paho.mqtt.rust.git#f92e43a9e252cf0fe552c5420eb41005e454140a"
 dependencies = [
  "bindgen 0.50.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "cmake 0.1.42 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -267,6 +291,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "proc-macro2"
+version = "1.0.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "unicode-xid 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "quick-error"
 version = "1.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -277,6 +309,14 @@ version = "0.6.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "proc-macro2 0.4.30 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "quote"
+version = "1.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "proc-macro2 1.0.7 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -320,6 +360,16 @@ version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
+name = "syn"
+version = "1.0.13"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "proc-macro2 1.0.7 (registry+https://github.com/rust-lang/crates.io-index)",
+ "quote 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "unicode-xid 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "termcolor"
 version = "1.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -341,7 +391,7 @@ version = "0.1.0"
 dependencies = [
  "dht22_pi 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.2.66 (registry+https://github.com/rust-lang/crates.io-index)",
- "paho-mqtt 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "paho-mqtt 0.7.0 (git+https://github.com/eclipse/paho.mqtt.rust.git)",
  "rppal 0.11.3 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -361,6 +411,11 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "unicode-xid"
 version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "unicode-xid"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
@@ -422,6 +477,7 @@ dependencies = [
 "checksum aho-corasick 0.7.6 (registry+https://github.com/rust-lang/crates.io-index)" = "58fb5e95d83b38284460a5fda7d6470aa0b8844d283a0b614b8535e880800d2d"
 "checksum ansi_term 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)" = "ee49baf6cb617b853aa8d93bf420db2383fab46d314482ca2803b40d5fde979b"
 "checksum atty 0.2.13 (registry+https://github.com/rust-lang/crates.io-index)" = "1803c647a3ec87095e7ae7acfca019e98de5ec9a7d01343f611cf3152ed71a90"
+"checksum autocfg 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)" = "1d49d90015b3c36167a20fe2810c5cd875ad504b39cff3d4eae7977e6b7c1cb2"
 "checksum backtrace 0.3.40 (registry+https://github.com/rust-lang/crates.io-index)" = "924c76597f0d9ca25d762c25a4d369d51267536465dc5064bdf0eb073ed477ea"
 "checksum backtrace-sys 0.1.32 (registry+https://github.com/rust-lang/crates.io-index)" = "5d6575f128516de27e3ce99689419835fce9643a9b215a14d2b5b685be018491"
 "checksum bindgen 0.50.1 (registry+https://github.com/rust-lang/crates.io-index)" = "cb0e5a5f74b2bafe0b39379f616b5975e08bcaca4e779c078d5c31324147e9ba"
@@ -447,23 +503,29 @@ dependencies = [
 "checksum log 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)" = "14b6052be84e6b71ab17edffc2eeabf5c2c3ae1fdb464aae35ac50c67a44e1f7"
 "checksum memchr 2.2.1 (registry+https://github.com/rust-lang/crates.io-index)" = "88579771288728879b57485cc7d6b07d648c9f0141eb955f8ab7f9d45394468e"
 "checksum nom 4.2.3 (registry+https://github.com/rust-lang/crates.io-index)" = "2ad2a91a8e869eeb30b9cb3119ae87773a8f4ae617f41b1eb9c154b2905f7bd6"
-"checksum paho-mqtt 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)" = "662e0ce380ac38a98071bf43cae40f33bfabad4ec5d0e9425fb35a785e816050"
-"checksum paho-mqtt-sys 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)" = "ea5b57c183a901ff955a5a0ec36963593dfe82b24ffb38086286a09c376b1e9f"
+"checksum num-derive 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)" = "0c8b15b261814f992e33760b1fca9fe8b693d8a65299f20c9901688636cfb746"
+"checksum num-traits 0.2.10 (registry+https://github.com/rust-lang/crates.io-index)" = "d4c81ffc11c212fa327657cb19dd85eb7419e163b5b076bede2bdb5c974c07e4"
+"checksum paho-mqtt 0.7.0 (git+https://github.com/eclipse/paho.mqtt.rust.git)" = "<none>"
+"checksum paho-mqtt-sys 0.2.1 (git+https://github.com/eclipse/paho.mqtt.rust.git)" = "<none>"
 "checksum peeking_take_while 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)" = "19b17cddbe7ec3f8bc800887bab5e717348c95ea2ca0b1bf0837fb964dc67099"
 "checksum proc-macro2 0.4.30 (registry+https://github.com/rust-lang/crates.io-index)" = "cf3d2011ab5c909338f7887f4fc896d35932e29146c12c8d01da6b22a80ba759"
+"checksum proc-macro2 1.0.7 (registry+https://github.com/rust-lang/crates.io-index)" = "0319972dcae462681daf4da1adeeaa066e3ebd29c69be96c6abb1259d2ee2bcc"
 "checksum quick-error 1.2.2 (registry+https://github.com/rust-lang/crates.io-index)" = "9274b940887ce9addde99c4eee6b5c44cc494b182b97e73dc8ffdcb3397fd3f0"
 "checksum quote 0.6.13 (registry+https://github.com/rust-lang/crates.io-index)" = "6ce23b6b870e8f94f81fb0a363d65d86675884b34a09043c81e5562f11c1f8e1"
+"checksum quote 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)" = "053a8c8bcc71fcce321828dc897a98ab9760bef03a4fc36693c231e5b3216cfe"
 "checksum regex 1.3.1 (registry+https://github.com/rust-lang/crates.io-index)" = "dc220bd33bdce8f093101afe22a037b8eb0e5af33592e6a9caafff0d4cb81cbd"
 "checksum regex-syntax 0.6.12 (registry+https://github.com/rust-lang/crates.io-index)" = "11a7e20d1cce64ef2fed88b66d347f88bd9babb82845b2b858f3edbf59a4f716"
 "checksum rppal 0.11.3 (registry+https://github.com/rust-lang/crates.io-index)" = "137dbba1fb867daa27cda4c3cd6a11bca5bb5a1551f034cf9319b994846ddbe1"
 "checksum rustc-demangle 0.1.16 (registry+https://github.com/rust-lang/crates.io-index)" = "4c691c0e608126e00913e33f0ccf3727d5fc84573623b8d65b2df340b5201783"
 "checksum shlex 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "7fdf1b9db47230893d76faad238fd6097fd6d6a9245cd7a4d90dbd639536bbd2"
 "checksum strsim 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)" = "8ea5119cdb4c55b55d432abb513a0429384878c15dde60cc77b1c99de1a95a6a"
+"checksum syn 1.0.13 (registry+https://github.com/rust-lang/crates.io-index)" = "1e4ff033220a41d1a57d8125eab57bf5263783dfdcc18688b1dacc6ce9651ef8"
 "checksum termcolor 1.0.5 (registry+https://github.com/rust-lang/crates.io-index)" = "96d6098003bde162e4277c70665bd87c326f5a0c3f3fbfb285787fa482d54e6e"
 "checksum textwrap 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)" = "d326610f408c7a4eb6f51c37c330e496b08506c9457c9d34287ecc38809fb060"
 "checksum thread_local 0.3.6 (registry+https://github.com/rust-lang/crates.io-index)" = "c6b53e329000edc2b34dbe8545fd20e55a333362d0a321909685a19bd28c3f1b"
 "checksum unicode-width 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)" = "caaa9d531767d1ff2150b9332433f32a24622147e5ebb1f26409d5da67afd479"
 "checksum unicode-xid 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "fc72304796d0818e357ead4e000d19c9c174ab23dc11093ac919054d20a6a7fc"
+"checksum unicode-xid 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "826e7639553986605ec5979c7dd957c7895e93eabed50ab2ffa7f6128a75097c"
 "checksum vec_map 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)" = "05c78687fb1a80548ae3250346c3db86a80a7cdd77bda190189f2d0a0987c81a"
 "checksum version_check 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)" = "914b1a6776c4c929a602fafd8bc742e06365d4bcbe48c30f9cca5824f70dc9dd"
 "checksum which 2.0.1 (registry+https://github.com/rust-lang/crates.io-index)" = "b57acb10231b9493c8472b20cb57317d0679a49e0bdbee44b3b803a6473af164"
