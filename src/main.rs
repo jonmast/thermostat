@@ -8,20 +8,24 @@ use std::time::Duration;
 
 mod client;
 mod dht;
+mod display;
 
 use client::Client;
 
-const SENSOR_PIN: u8 = 2;
+const SENSOR_PIN: u8 = 16;
 const RELAY_PIN: u8 = 4;
 const DEFAULT_TARGET: f32 = 70.0;
 const SAVE_FILE: &str = "target.txt";
+const VARIANCE: f32 = 1.0;
+const I2CDEVICE: &str = "/dev/i2c-1";
+const LCDBUS: u16 = 0x27;
+
 const MQTT_HOST: &str = "tcp://192.168.1.25:1883";
 const TEMPERATURE_TOPIC: &str = "bedroom/heat/current_temperature/get";
 const HUMIDITY_TOPIC: &str = "bedroom/heat/current_humidity/get";
 const SET_TARGET_TOPIC: &str = "bedroom/heat/target_temperature/set";
 const GET_TARGET_TOPIC: &str = "bedroom/heat/target_temperature/get";
 const MODE_TOPIC: &str = "bedroom/heat/mode/state";
-const VARIANCE: f32 = 1.0;
 
 #[derive(Debug, Default)]
 pub struct Status {
@@ -35,6 +39,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     let gpio = Gpio::new()?;
     let mut pin = gpio.get(SENSOR_PIN)?.into_io(Mode::Input);
     let mut relay_pin = gpio.get(RELAY_PIN)?.into_output();
+
+    let mut display = display::Display::new(I2CDEVICE, LCDBUS)?;
 
     let mut status = Status {
         target_temperature: initial_target(),
@@ -64,7 +70,11 @@ fn main() -> Result<(), Box<dyn Error>> {
                 println!(
                     "Temp: {:.2}, Humidity: {:.2}, Target: {}, Running: {}",
                     status.temperature, status.humidity, status.target_temperature, status.running
-                )
+                );
+
+                if let Err(e) = display.update_status(&status) {
+                    eprintln!("LCD Error: {:?}", e);
+                };
             }
             Err(e) => eprintln!("Error: {:?}", e),
         }

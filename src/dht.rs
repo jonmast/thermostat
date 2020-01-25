@@ -149,7 +149,7 @@ fn set_default_priority() {
 #[inline(always)]
 fn delay_microseconds(micros: u64) {
     if micros == 0 {
-        return;
+        // Zero sleep is a no-op
     } else if micros < 100 {
         delay_microseconds_hard(micros);
     } else {
