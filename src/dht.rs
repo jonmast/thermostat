@@ -101,8 +101,7 @@ fn decode(arr: [usize; DHT_PULSES * 2]) -> Result<Reading, ReadingError> {
         != (data[0]
             .wrapping_add(data[1])
             .wrapping_add(data[2])
-            .wrapping_add(data[3])
-            & 0xFF)
+            .wrapping_add(data[3]))
     {
         return Result::Err(ReadingError::Checksum);
     }

@@ -1,19 +1,59 @@
 use crate::Status;
 use pwr_hd44780::Hd44780;
+use std::sync::mpsc::{channel, Receiver, Sender};
+use std::thread;
 
 mod font;
 
-pub struct Display<T>
+#[derive(Debug, Clone)]
+pub(crate) struct Display {
+    events: Sender<Event>,
+}
+
+enum Event {
+    StatusUpdate(Status),
+    SetBacklight(bool),
+}
+
+impl Display {
+    pub(crate) fn new(device: &'static str, bus: u16) -> Result<Self, Box<dyn std::error::Error>> {
+        let (tx, rx) = channel();
+
+        thread::spawn(move || {
+            let mut lcd = InnerDisplay::new(device, bus).unwrap();
+            lcd.start_loop(rx);
+        });
+
+        Ok(Self { events: tx })
+    }
+
+    pub(crate) fn update_status(&self, status: &Status) -> Result<(), Box<dyn std::error::Error>> {
+        self.events.send(Event::StatusUpdate(status.clone()))?;
+
+        Ok(())
+    }
+
+    pub(crate) fn backlight_on(&self) {
+        self.events.send(Event::SetBacklight(true)).unwrap();
+    }
+
+    pub(crate) fn backlight_off(&self) {
+        self.events.send(Event::SetBacklight(false)).unwrap();
+    }
+}
+
+struct InnerDisplay<T>
 where
     T: Hd44780,
 {
     lcd: T,
 }
 
-impl Display<pwr_hd44780::DirectLcd> {
+impl InnerDisplay<pwr_hd44780::DirectLcd> {
     pub(crate) fn new(device: &str, bus: u16) -> Result<Self, Box<dyn std::error::Error>> {
         let lcd_bus = pwr_hd44780::I2CBus::new(device, bus)?;
         let mut lcd = pwr_hd44780::DirectLcd::new(Box::new(lcd_bus), 20, 4)?;
+        lcd.set_backlight(false)?;
         lcd.clear()?;
 
         font::setup(&mut lcd)?;
@@ -22,14 +62,11 @@ impl Display<pwr_hd44780::DirectLcd> {
     }
 }
 
-impl<T> Display<T>
+impl<T> InnerDisplay<T>
 where
     T: Hd44780,
 {
-    pub(crate) fn update_status(
-        &mut self,
-        status: &Status,
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    fn update_status(&mut self, status: &Status) -> Result<(), Box<dyn std::error::Error>> {
         let temp = status.temperature;
         let [first, middle, last] = split_digits(temp);
         font::print_big_char(&mut self.lcd, first, 0, 0)?;
@@ -49,6 +86,28 @@ where
 
         let run_status = if status.running { "On" } else { "Off" };
         self.lcd.print_at(3, 17, format!("{:>3}", run_status))?;
+
+        Ok(())
+    }
+
+    fn start_loop(&mut self, events: Receiver<Event>) {
+        loop {
+            match events.recv() {
+                Ok(event) => self.handle_event(event).unwrap(),
+                Err(e) => {
+                    eprintln!("Error {} in receiving button event", e);
+                    break;
+                }
+            };
+        }
+    }
+
+    fn handle_event(&mut self, event: Event) -> Result<(), Box<dyn std::error::Error>> {
+        match event {
+            Event::SetBacklight(true) => self.lcd.set_backlight(true)?,
+            Event::SetBacklight(false) => self.lcd.set_backlight(false)?,
+            Event::StatusUpdate(status) => self.update_status(&status)?,
+        }
 
         Ok(())
     }

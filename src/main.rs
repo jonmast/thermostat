@@ -6,6 +6,7 @@ use std::str;
 use std::thread::sleep;
 use std::time::Duration;
 
+mod buttons;
 mod client;
 mod dht;
 mod display;
@@ -14,6 +15,8 @@ use client::Client;
 
 const SENSOR_PIN: u8 = 16;
 const RELAY_PIN: u8 = 4;
+const UP_BUTTON_PIN: u8 = 7;
+const DOWN_BUTTON_PIN: u8 = 8;
 const DEFAULT_TARGET: f32 = 70.0;
 const SAVE_FILE: &str = "target.txt";
 const VARIANCE: f32 = 1.0;
@@ -27,7 +30,7 @@ const SET_TARGET_TOPIC: &str = "bedroom/heat/target_temperature/set";
 const GET_TARGET_TOPIC: &str = "bedroom/heat/target_temperature/get";
 const MODE_TOPIC: &str = "bedroom/heat/mode/state";
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct Status {
     temperature: f32,
     humidity: f32,
@@ -40,7 +43,10 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut pin = gpio.get(SENSOR_PIN)?.into_io(Mode::Input);
     let mut relay_pin = gpio.get(RELAY_PIN)?.into_output();
 
-    let mut display = display::Display::new(I2CDEVICE, LCDBUS)?;
+    let display = display::Display::new(I2CDEVICE, LCDBUS)?;
+
+    let _button_handler =
+        buttons::ButtonHandler::new(&gpio, UP_BUTTON_PIN, DOWN_BUTTON_PIN, display.clone())?;
 
     let mut status = Status {
         target_temperature: initial_target(),
