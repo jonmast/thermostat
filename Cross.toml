@@ -1,2 +1,0 @@
-[target.arm-unknown-linux-gnueabi]
-image = "pizero/build"
