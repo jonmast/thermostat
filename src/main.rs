@@ -9,7 +9,7 @@ use std::str;
 use std::time::Duration;
 use tokio::stream::StreamExt;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
-use tokio::time::delay_for;
+use tokio::time::{delay_for, timeout};
 
 mod buttons;
 mod client;
@@ -123,7 +123,6 @@ async fn process_events(
     while let Some(event) = events_rx.next().await {
         match event {
             Event::UpdateTarget(new_target) => {
-                println!("got new target: {}", new_target);
                 status.target_temperature = new_target;
 
                 if let Err(e) = write_target_to_file(new_target) {
@@ -140,8 +139,7 @@ async fn process_events(
                     requests_tx.clone(),
                     GET_TARGET_TOPIC,
                     &status.target_temperature.to_string(),
-                )
-                .await;
+                );
 
                 toggle_state(&mut relay_pin, &mut status);
 
@@ -149,8 +147,7 @@ async fn process_events(
                     requests_tx.clone(),
                     MODE_TOPIC,
                     if status.running { "heat" } else { "off" },
-                )
-                .await;
+                );
             }
             Event::Reading {
                 temperature,
@@ -159,8 +156,6 @@ async fn process_events(
                 status.temperature = temperature;
                 status.humidity = humidity;
 
-                push_state(requests_tx.clone(), &status).await;
-
                 toggle_state(&mut relay_pin, &mut status);
 
                 println!(
@@ -168,16 +163,11 @@ async fn process_events(
                     status.temperature, status.humidity, status.target_temperature, status.running
                 );
 
-                mqtt_publish(
-                    requests_tx.clone(),
-                    MODE_TOPIC,
-                    if status.running { "heat" } else { "off" },
-                )
-                .await;
-
                 if let Err(e) = display.update_status(&status) {
                     eprintln!("LCD Error: {:?}", e);
                 };
+
+                push_state(requests_tx.clone(), &status).await;
             }
         }
     }
@@ -228,18 +218,28 @@ fn celcius_to_farenheit(celcius: f32) -> f32 {
     (celcius * 1.8) + 32f32
 }
 
-async fn mqtt_publish(mut requests_tx: Sender<Request>, topic: &str, payload: &str) {
+fn mqtt_publish(mut requests_tx: Sender<Request>, topic: &str, payload: &str) {
     let message = Publish::new(topic, QoS::AtLeastOnce, payload);
-    requests_tx.send(message.into()).await.unwrap();
+
+    tokio::spawn(async move {
+        if let Err(e) = timeout(Duration::from_secs(30), requests_tx.send(message.into())).await {
+            println!("publish error {}", e)
+        };
+    });
 }
 
 async fn push_state(requests_tx: Sender<Request>, status: &Status) {
-    let tx2 = requests_tx.clone();
     let temperature = status.temperature.to_string();
     let humidity = status.humidity.to_string();
-    tokio::join!(
-        mqtt_publish(tx2, TEMPERATURE_TOPIC, &temperature),
-        mqtt_publish(requests_tx, HUMIDITY_TOPIC, &humidity),
+    let target_temperature = status.target_temperature.to_string();
+
+    mqtt_publish(requests_tx.clone(), TEMPERATURE_TOPIC, &temperature);
+    mqtt_publish(requests_tx.clone(), HUMIDITY_TOPIC, &humidity);
+    mqtt_publish(requests_tx.clone(), GET_TARGET_TOPIC, &target_temperature);
+    mqtt_publish(
+        requests_tx,
+        MODE_TOPIC,
+        if status.running { "heat" } else { "off" },
     );
 }
 
