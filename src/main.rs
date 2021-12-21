@@ -1,12 +1,14 @@
 #![warn(missing_debug_implementations)]
 
-use rppal::gpio::{Gpio, IoPin, Mode, OutputPin};
-use rumq_client::{Notification, Publish, QoS, Request};
 use std::error::Error;
 use std::fs::File;
 use std::io::prelude::*;
 use std::str;
-use std::time::Duration;
+use std::time::{Duration, Instant};
+
+use chrono::Timelike;
+use rppal::gpio::{Gpio, IoPin, Mode, OutputPin};
+use rumq_client::{Notification, Publish, QoS, Request};
 use tokio::stream::StreamExt;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 use tokio::time::{delay_for, timeout};
@@ -34,18 +36,37 @@ const HUMIDITY_TOPIC: &str = "bedroom/heat/current_humidity/get";
 const SET_TARGET_TOPIC: &str = "bedroom/heat/target_temperature/set";
 const GET_TARGET_TOPIC: &str = "bedroom/heat/target_temperature/get";
 const MODE_TOPIC: &str = "bedroom/heat/mode/state";
+const DESK_TEMPERATURE_TOPIC: &str = "desk/current_temperature/get";
+const MAX_TEMPERATURE_LAG: Duration = Duration::from_secs(60 * 10);
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Clone)]
 pub struct Status {
     temperature: f32,
     humidity: f32,
     target_temperature: f32,
     running: bool,
+    desk_temperature: f32,
+    desk_temperature_updated: Instant,
+}
+
+impl Status {
+    fn new(target_temperature: f32, running: bool) -> Self {
+        Status {
+            temperature: 0.0,
+            humidity: 0.0,
+            target_temperature,
+            running,
+            desk_temperature: 0.0,
+            // Start with out of date temperature so it's ignored
+            desk_temperature_updated: Instant::now() - MAX_TEMPERATURE_LAG,
+        }
+    }
 }
 
 #[derive(Debug)]
 enum Event {
     UpdateTarget(f32),
+    UpdateDeskTemperature(f32),
     Reading { temperature: f32, humidity: f32 },
 }
 
@@ -60,13 +81,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let _button_handler =
         buttons::ButtonHandler::new(&gpio, UP_BUTTON_PIN, DOWN_BUTTON_PIN, display.clone())?;
 
-    let status = Status {
-        target_temperature: initial_target(),
-        running: relay_pin.is_set_high(),
-        ..Default::default()
-    };
+    let status = Status::new(initial_target(), relay_pin.is_set_high());
 
-    let (requests_tx, notifications_rx) = client::connect(MQTT_HOST, SET_TARGET_TOPIC).await;
+    let (requests_tx, notifications_rx) =
+        client::connect(MQTT_HOST, vec![SET_TARGET_TOPIC, DESK_TEMPERATURE_TOPIC]).await;
 
     let (events_tx, events_rx) = channel(50);
 
@@ -97,6 +115,16 @@ async fn process_mqtt_stream(
                     {
                         events_tx
                             .send(Event::UpdateTarget(new_target))
+                            .await
+                            .unwrap();
+                    }
+                }
+                DESK_TEMPERATURE_TOPIC => {
+                    if let Ok(Ok(new_temperature)) =
+                        str::from_utf8(&message.payload).map(|t| t.parse())
+                    {
+                        events_tx
+                            .send(Event::UpdateDeskTemperature(new_temperature))
                             .await
                             .unwrap();
                     }
@@ -159,8 +187,8 @@ async fn process_events(
                 toggle_state(&mut relay_pin, &mut status);
 
                 println!(
-                    "Temp: {:.2}, Humidity: {:.2}, Target: {}, Running: {}",
-                    status.temperature, status.humidity, status.target_temperature, status.running
+                    "Our Temp: {:.2}, Effective Temp: {:.2} Humidity: {:.2}, Target: {}, Running: {}",
+                    status.temperature, effective_temperature(&status), status.humidity, status.target_temperature, status.running
                 );
 
                 if let Err(e) = display.update_status(&status) {
@@ -168,6 +196,12 @@ async fn process_events(
                 };
 
                 push_state(requests_tx.clone(), &status).await;
+            }
+            Event::UpdateDeskTemperature(desk_temperature) => {
+                println!("New Desk Temp: {:.2}", desk_temperature);
+
+                status.desk_temperature = desk_temperature;
+                status.desk_temperature_updated = Instant::now();
             }
         }
     }
@@ -244,11 +278,23 @@ async fn push_state(requests_tx: Sender<Request>, status: &Status) {
 }
 
 fn toggle_state(pin: &mut OutputPin, status: &mut Status) {
-    if status.running && status.temperature > (status.target_temperature + VARIANCE) {
+    let temperature = effective_temperature(status);
+    if status.running && temperature > (status.target_temperature + VARIANCE) {
         pin.set_low();
         status.running = false;
-    } else if !status.running && status.temperature < (status.target_temperature - VARIANCE) {
+    } else if !status.running && temperature < (status.target_temperature - VARIANCE) {
         pin.set_high();
         status.running = true
+    }
+}
+
+fn effective_temperature(status: &Status) -> f32 {
+    let hour = chrono::Local::now().hour();
+
+    // Effective temperature is average of local and desk temp during daytime hours
+    if hour >= 7 && hour <= 18 && status.desk_temperature_updated.elapsed() < MAX_TEMPERATURE_LAG {
+        (status.temperature + status.desk_temperature) / 2.0
+    } else {
+        status.temperature
     }
 }

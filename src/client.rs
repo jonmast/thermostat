@@ -8,7 +8,7 @@ use tokio::time;
 
 pub(crate) async fn connect(
     address: &str,
-    topic: &'static str,
+    topics: Vec<&'static str>,
 ) -> (Sender<Request>, Receiver<Notification>) {
     let address: SocketAddr = address.parse().unwrap();
     let mut mqtt_options = MqttOptions::new("thermostat", address.ip().to_string(), address.port());
@@ -26,7 +26,7 @@ pub(crate) async fn connect(
         mqtt_options,
         requests_tx.clone(),
         requests_rx,
-        topic,
+        topics,
         notifications_tx,
     ));
 
@@ -37,7 +37,7 @@ async fn reconnect_loop(
     mqtt_options: MqttOptions,
     requests_tx: Sender<Request>,
     requests_rx: Receiver<Request>,
-    topic: &'static str,
+    topics: Vec<&'static str>,
     mut notifications_tx: Sender<Notification>,
 ) {
     let mut event_loop = eventloop(mqtt_options, requests_rx);
@@ -46,11 +46,13 @@ async fn reconnect_loop(
         match event_loop.connect().await {
             Ok(mut stream) => {
                 println!("Connected to broker");
-                let mut requests_tx = requests_tx.clone();
-                tokio::spawn(async move {
-                    let subscription = Subscribe::new(topic, QoS::AtLeastOnce);
-                    requests_tx.send(subscription.into()).await.unwrap();
-                });
+                for &topic in &topics {
+                    let mut requests_tx = requests_tx.clone();
+                    tokio::spawn(async move {
+                        let subscription = Subscribe::new(topic, QoS::AtLeastOnce);
+                        requests_tx.send(subscription.into()).await.unwrap();
+                    });
+                }
 
                 while let Some(item) = stream.next().await {
                     notifications_tx.send(item).await.unwrap();
